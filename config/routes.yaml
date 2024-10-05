@@ -1,0 +1,16 @@
+routes:
+  - path: "/health"
+    type: "GET"
+    authorization: false
+
+  - path: "/payments"
+    type: "POST"
+    authorization: true
+    auth_type: "jwt" # Could be jwt, oauth, cloudflare_jwt
+
+  - path: "/admin"
+    type: "GET"
+    authorization: true
+    auth_type: "cloudflare_jwt"
+    role: "admin"  # Specify a role for RBAC
+
