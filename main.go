@@ -1,62 +1,29 @@
 package main
 
 import (
-	"log"
-	"github.com/gin-gonic/gin"
-	"caaspay-api-go/api/middleware"
 	"caaspay-api-go/api/routes"
+	"caaspay-api-go/internal/rpc"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
 
-	// Load routes dynamically from YAML
-	routeConfigs, err := routes.LoadRoutes()
+	// Initialize the RPC client pool
+	rpcClientPool := rpc.NewRPCClientPool("codensmoke-support-redis-single-1:6379", 30*time.Second, 5)
+	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
+
+	// Initialize the routes using the route config
+	err := routes.SetupRoutes(r, rpcClientPool, "config/routes.yaml")
 	if err != nil {
-		log.Fatalf("Failed to load routes: %v", err)
+		log.Fatalf("Failed to set up routes: %v", err)
 	}
 
-	// Register routes dynamically
-	for _, route := range routeConfigs {
-		mws := []gin.HandlerFunc{} // Middleware stack for this route
-
-		// Add authentication middleware based on auth_type
-		if route.Authorization {
-			switch route.AuthType {
-			case "jwt":
-				mws = append(mws, middleware.JWTAuthMiddleware())
-			case "oauth":
-				mws = append(mws, middleware.OAuthMiddleware())
-			case "cloudflare_jwt":
-				mws = append(mws, middleware.CloudflareJWTMiddleware())
-			}
-		}
-
-		// Add RBAC middleware if a role is specified
-		if route.Role != "" {
-			mws = append(mws, middleware.RBACMiddleware(route.Role))
-		}
-
-		// Register route with the selected middlewares
-		switch route.Type {
-		case "GET":
-			r.GET(route.Path, append(mws, genericHandler(route))...)
-		case "POST":
-			r.POST(route.Path, append(mws, genericHandler(route))...)
-		default:
-			log.Printf("Unsupported route type: %s for path: %s", route.Type, route.Path)
-		}
-	}
-
-	r.Run(":8080") // Start the server
+	// Start the API server
+	r.Run(":8080")
 }
-
-// Placeholder for your generic handler
-func genericHandler(route routes.RouteConfig) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "Route " + route.Path + " handled successfully",
-		})
-	}
-}
-
