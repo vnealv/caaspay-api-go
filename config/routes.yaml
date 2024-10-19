@@ -7,10 +7,25 @@ routes:
     type: "POST"
     authorization: true
     auth_type: "jwt" # Could be jwt, oauth, cloudflare_jwt
+    role: "user"
+    service: testing
+    method: whatsup
 
   - path: "/admin"
     type: "GET"
     authorization: true
     auth_type: "cloudflare_jwt"
-    role: "admin"  # Specify a role for RBAC
+    role: "admin"
+    service: "deriv_service_admin"
+    method: "get_info"
+
+  - path: "/account/info"
+    type: "GET"
+    authorization: true
+    service: "deriv_service_interface_clientdb"
+    method: "account_info"
+
+  - path: "/payments/process"
+    type: "POST"
+    authorization: false
 
