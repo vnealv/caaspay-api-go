@@ -1,13 +1,13 @@
 package middleware
 
 import (
+	"caaspay-api-go/pkg/auth"
 	"context"
-	"net/http"
-	"strings"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"caaspay-api-go/pkg/auth"
 	"golang.org/x/oauth2"
+	"net/http"
+	"strings"
 )
 
 // JWTAuthMiddleware checks for valid JWT token in Authorization header
@@ -50,7 +50,6 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-
 // OAuth configuration for your service (replace with your own settings)
 var oauthConfig = oauth2.Config{
 	ClientID:     "your-client-id",
@@ -92,7 +91,6 @@ func OAuthMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
-
 
 // CloudflarePublicKey is the RSA public key used to validate Cloudflare JWT tokens
 var CloudflarePublicKey = []byte(`-----BEGIN PUBLIC KEY-----

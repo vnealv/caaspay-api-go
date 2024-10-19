@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"net/http"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 func RBACMiddleware(allowedRoles ...string) gin.HandlerFunc {
@@ -26,4 +26,3 @@ func RBACMiddleware(allowedRoles ...string) gin.HandlerFunc {
 		c.Abort()
 	}
 }
-

@@ -21,4 +21,3 @@ func ValidateOAuthToken(accessToken string) (*oauth2.Token, error) {
 	})
 	return tokenSource.Token()
 }
-
