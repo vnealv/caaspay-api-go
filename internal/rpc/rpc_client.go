@@ -3,7 +3,6 @@ package rpc
 import (
 	"caaspay-api-go/internal/broker"
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -107,43 +106,8 @@ func (c *RPCClient) Close() error {
 	return nil
 }
 
-//func MapToRPCMessage(data map[string]interface{}) *RPCMessage {
-//    message := &RPCMessage{}
-//    message.FromMap(data)
-//    return message
-//}
-
 func MapToRPCMessage(data map[string]interface{}) *RPCMessage {
-	msg := &RPCMessage{}
-	// Basic fields
-	if val, ok := data["rpc"].(string); ok {
-		msg.RPC = val
-	}
-	if val, ok := data["who"].(string); ok {
-		msg.Who = val
-	}
-	if val, ok := data["message_id"].(string); ok {
-		msg.MessageID = val
-	}
-	if val, ok := data["deadline"].(float64); ok {
-		msg.Deadline = int64(val)
-	}
-
-	// Parse `args` and `stash` fields as nested JSON objects
-	if args, ok := data["args"].(map[string]interface{}); ok {
-		msg.Args = args
-	}
-	if stash, ok := data["stash"].(map[string]interface{}); ok {
-		msg.Stash = stash
-	}
-
-	// Parse `response` field (which might be serialized JSON string)
-	if responseStr, ok := data["response"].(string); ok {
-		var response map[string]interface{}
-		if err := json.Unmarshal([]byte(responseStr), &response); err == nil {
-			msg.Response = response
-		}
-	}
-
-	return msg
+	message := &RPCMessage{}
+	message.FromMap(data)
+	return message
 }

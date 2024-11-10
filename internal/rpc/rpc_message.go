@@ -44,16 +44,6 @@ func (m *RPCMessage) ToJSON() (string, error) {
 	return string(jsonData), nil
 }
 
-// FromJSON deserializes an RPC message from JSON
-//func FromJSON(jsonString string) (*RPCMessage, error) {
-//    var msg RPCMessage
-//    err := json.Unmarshal([]byte(jsonString), &msg)
-//    if err != nil {
-//        return nil, fmt.Errorf("failed to deserialize message: %w", err)
-//    }
-//    return &msg, nil
-//}
-
 // FromJSON deserializes a JSON string into an RPCMessage
 func FromJSON(jsonString string) (*RPCMessage, error) {
 	var msg RPCMessage
@@ -119,8 +109,11 @@ func (m *RPCMessage) FromMap(data map[string]interface{}) {
 	if args, ok := data["args"].(map[string]interface{}); ok {
 		m.Args = args
 	}
-	if response, ok := data["response"].(map[string]interface{}); ok {
-		m.Response = response
+	if responseStr, ok := data["response"].(string); ok {
+		var response map[string]interface{}
+		if err := json.Unmarshal([]byte(responseStr), &response); err == nil {
+			m.Response = response
+		}
 	}
 	if stash, ok := data["stash"].(map[string]interface{}); ok {
 		m.Stash = stash

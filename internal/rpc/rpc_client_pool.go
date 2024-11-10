@@ -22,6 +22,7 @@ type RPCClientPool struct {
 	scalingDown          bool
 	monitorInterval      time.Duration
 	logger               *logging.Logger
+	ctx                  context.Context
 }
 
 // NewRPCClientPool initializes a new pool of RPC clients with configurable limits and monitoring interval
@@ -35,6 +36,7 @@ func NewRPCClientPool(ctx context.Context, initialClients, maxClients, maxReques
 		broker:               broker,
 		monitorInterval:      monitorInterval,
 		logger:               logger,
+		ctx:                  ctx,
 	}
 
 	// Initialize the initial pool of clients
@@ -48,7 +50,7 @@ func NewRPCClientPool(ctx context.Context, initialClients, maxClients, maxReques
 	}
 
 	// Start monitoring and scaling down if needed
-	go pool.monitorAndScaleDown(ctx)
+	go pool.monitorAndScaleDown()
 	return pool
 }
 
@@ -67,8 +69,7 @@ func (p *RPCClientPool) GetClient(timeout time.Duration) (*RPCClient, error) {
 
 	// Create a new client if all are busy and maxClients limit is not reached
 	if len(p.clients) < p.maxClients {
-		ctx := context.Background()
-		newClient := NewRPCClient(p.broker, ctx)
+		newClient := NewRPCClient(p.broker, p.ctx)
 		if err := newClient.Start(); err == nil {
 			p.clients = append(p.clients, newClient)
 			p.activeRequests[newClient] = 1
@@ -113,33 +114,7 @@ func (p *RPCClientPool) ReturnClient(client *RPCClient) {
 	}
 }
 
-// monitorAndScaleDown periodically checks and removes extra clients if load decreases
-//func (p *RPCClientPool) monitorAndScaleDown(ctx context.Context) {
-//    ticker := time.NewTicker(p.monitorInterval)
-//    defer ticker.Stop()
-//
-//    for {
-//        select {
-//        case <-ticker.C:
-//            p.mutex.Lock()
-//            if len(p.clients) > p.initialClients && !p.scalingDown {
-//                for i := len(p.clients) - 1; i >= p.initialClients; i-- {
-//                    client := p.clients[i]
-//                    if p.activeRequests[client] == 0 {
-//                        client.Close() // Close unused clients
-//                        p.clients = p.clients[:i]
-//                        delete(p.activeRequests, client)
-//                    }
-//                }
-//            }
-//            p.mutex.Unlock()
-//        case <-ctx.Done():
-//            return
-//        }
-//    }
-//}
-
-func (p *RPCClientPool) monitorAndScaleDown(ctx context.Context) {
+func (p *RPCClientPool) monitorAndScaleDown() {
 	ticker := time.NewTicker(p.monitorInterval)
 	defer ticker.Stop()
 
@@ -168,7 +143,7 @@ func (p *RPCClientPool) monitorAndScaleDown(ctx context.Context) {
 				}
 			}
 			p.mutex.Unlock()
-		case <-ctx.Done():
+		case <-p.ctx.Done():
 			return
 		}
 	}
