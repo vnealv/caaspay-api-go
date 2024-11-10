@@ -8,8 +8,22 @@ routes:
     authorization: true
     auth_type: "jwt" # Could be jwt, oauth, cloudflare_jwt
     role: "user"
-    service: testing
-    method: whatsup
+    service: "control.authentication.login"
+    method: "login"
+    params:
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "age"
+        type: int
+        required: false
+
+
+  - path: "/payments/test-the-time/nael"
+    type: "POST"
+    authorization: true
+    auth_type: "jwt" # Could be jwt, oauth, cloudflare_jwt
+    role: "user"
 
   - path: "/admin"
     type: "GET"
