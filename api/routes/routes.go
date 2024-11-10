@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+"time"
 )
 
 // ParamConfig defines the structure for route parameters
@@ -110,18 +111,34 @@ func createHandler(routeConfig RouteConfig, rpcClientPool *rpc.RPCClientPool) gi
 		service, method := getServiceAndMethod(c, routeConfig)
 
 		// Get an RPC client from the pool
-		rpcClient := rpcClientPool.GetClient()
+		//rpcClient := rpcClientPool.GetClient()
+		rpcClient, err := rpcClientPool.GetClient(5 * time.Second)
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "all clients are busy"})
+			return
+		}
+        defer rpcClientPool.ReturnClient(rpcClient) // Ensure client is returned to the pool
 
 		// Send the RPC request and get the response
 		log.Printf("To call RPC: s:%v m:%v a:%v", service, method, args)
 		response, err := rpcClient.CallRPC(service, method, args)
 		if err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
+		// Assuming `response` is of type map[string]interface{}
+		innerResponse, ok := response["response"].(map[string]interface{})
+		if !ok {
+			// Handle the case where "response" field is missing or not of expected type
+    		c.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected response structure"})
+    		return
+		}
+
+		c.JSON(http.StatusOK, innerResponse)
+
 		// Return the response to the client
-		c.JSON(200, response)
+		//c.JSON(200, response.Response)
 	}
 }
 
