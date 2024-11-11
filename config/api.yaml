@@ -1,0 +1,49 @@
+# config/api.yaml
+
+# General configuration
+metrics_enabled: true
+datadog_addr: "127.0.0.1:8125"  # Address for Datadog metrics
+log_level: info                 # Log level (e.g., debug, info, warn, error)
+port: 8080                      # Port for the API server (default: 8080)
+host: "127.0.0.1"               # Host for the API server (default: "127.0.0.1")
+rpc_timeout: 60s                # Default RPC timeout (default: 60 seconds)
+
+# Redis configuration
+redis:
+  is_cluster: false             # Use Redis Cluster (default: false)
+  prefix: "myriad"              # Prefix for Redis keys (default: "myriad")
+  address:                      # Redis server addresses (single instance or cluster nodes)
+    - "codensmoke-support-redis-main-0-1:6379"
+    - "codensmoke-support-redis-main-1-1:6379"
+    - "codensmoke-support-redis-main-2-1:6379"
+    - "codensmoke-support-redis-main-3-1:6379"
+    - "codensmoke-support-redis-main-4-1:6379"
+    - "codensmoke-support-redis-main-5-1:6379"
+
+# RPC client pool configuration
+rpc_pool:
+  initial_clients: 4            # Initial number of RPC clients (default: 4)
+  max_clients: 20               # Maximum number of RPC clients (default: 20)
+  max_request_per_client: 10    # Max requests each client can handle (default: 10)
+  monitor_interval: 15s         # Interval to monitor and scale the pool (default: 15 seconds)
+  scale_down: true              # Enable automatic scale-down of idle clients (default: false)
+
+# JWT configuration
+jwt:
+  token_expiry: 30m             # Token expiration duration (default: 30 minutes)
+  jwt_secret: "supersecretkey"  # Secret key for signing JWT tokens
+
+# OAuth configuration
+oauth:
+  client_id: "your-client-id"              # OAuth client ID
+  client_secret: "your-client-secret"      # OAuth client secret
+  redirect_url: "https://yourapp.com/auth" # OAuth redirect URL
+  endpoint:
+    auth_url: "https://provider.com/oauth/authorize"  # OAuth authorization URL
+    token_url: "https://provider.com/oauth/token"     # OAuth token URL
+
+# Cloudflare JWT configuration (example structure, customize as needed)
+jwt_cloudflare:
+  public_key: "your-cloudflare-public-key" # RSA public key for Cloudflare JWT verification
+  issuer: "https://your.cloudflareissuer.com"
+

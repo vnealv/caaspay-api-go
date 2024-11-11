@@ -100,9 +100,9 @@ func (c *RPCClient) Close() error {
 	}
 
 	// Close broker connection to clean up resources
-	if err := c.broker.Close(); err != nil {
-		return fmt.Errorf("failed to close broker connection: %w", err)
-	}
+	//if err := c.broker.Close(); err != nil {
+	//	return fmt.Errorf("failed to close broker connection: %w", err)
+	//}
 	return nil
 }
 

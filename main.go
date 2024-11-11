@@ -1,6 +1,7 @@
 package main
 
 import (
+	"caaspay-api-go/api/config"
 	"caaspay-api-go/api/routes"
 	"caaspay-api-go/internal/broker"
 	"caaspay-api-go/internal/logging"
@@ -19,6 +20,10 @@ import (
 func main() {
 	//    r := gin.Default()
 
+	cfg, err := config.LoadAPIConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 	// Initialize metrics based on configuration
 	var metricsClient logging.Metrics
 	//    if appConfig.MetricsEnabled {
@@ -35,6 +40,7 @@ func main() {
 	logger := logging.NewLogger("caaspay-service", "development", false, metricsClient)
 
 	// Set up Gin with logger middleware
+	// gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {
 		logger.Middleware()(c)
@@ -43,8 +49,8 @@ func main() {
 	// Initialize Redis broker with options
 	redisOptions := broker.RedisOptions{
 		Addrs:     []string{"codensmoke-support-redis-single-1:6379"}, // Single node address
-		Prefix:    "myriad",
-		IsCluster: false, // Set to true if you want to use a Redis cluster
+		Prefix:    cfg.Redis.Prefix,
+		IsCluster: cfg.Redis.IsCluster, // Set to true if you want to use a Redis cluster
 	}
 	redisBroker := broker.NewRedisBroker(redisOptions)
 
@@ -56,13 +62,13 @@ func main() {
 	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
 
 	// Initialize the routes with the route configuration
-	if err := routes.SetupRoutes(r, rpcClientPool, "config/routes.yaml"); err != nil {
+	if err := routes.SetupRoutes(r, rpcClientPool); err != nil {
 		//log.Fatalf("Failed to set up routes: %v", err)
-		logger.LogAndRecord(logrus.ErrorLevel, "Failed to set up routes", "setup_routes_error", nil)
+		logger.LogAndRecord(logrus.ErrorLevel, "Failed to set up routes", "setup_routes_error", map[string]string{"error": fmt.Sprintf("err %v", err)})
 	}
 
 	// Start the API server
-	if err := r.Run(":8080"); err != nil {
+	if err := r.Run(fmt.Sprintf("%v:%v", cfg.Host, cfg.Port)); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
 	}
 

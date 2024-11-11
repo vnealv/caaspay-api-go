@@ -6,6 +6,7 @@ import (
 	"caaspay-api-go/internal/rpc"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"regexp"
@@ -16,35 +17,43 @@ import (
 
 // ParamConfig defines the structure for route parameters
 type ParamConfig struct {
-	Name        string `yaml:"name"`
-	Type        string `yaml:"type"`
-	Required    bool   `yaml:"required,omitempty"` // Defaults to false
-	Description string `yaml:"description,omitempty"`
-	Pattern     string `yaml:"pattern,omitempty"`
+	Name        string `mapstructure:"name"`
+	Type        string `mapstructure:"type"`
+	Required    bool   `mapstructure:"required"` // Defaults to false
+	Description string `mapstructure:"description"`
+	Pattern     string `mapstructure:"pattern"`
 }
 
 // RouteConfig represents the configuration for a single route
 type RouteConfig struct {
-	Path          string        `yaml:"path"`
-	Type          string        `yaml:"type"`
-	Authorization bool          `yaml:"authorization,omitempty"`
-	AuthType      string        `yaml:"auth_type,omitempty"`
-	Role          string        `yaml:"role,omitempty"`
-	Service       string        `yaml:"service,omitempty"`
-	Method        string        `yaml:"method,omitempty"`
-	Params        []ParamConfig `yaml:"params"`
+	Path          string        `mapstructure:"path"`
+	Type          string        `mapstructure:"type"`
+	Authorization bool          `mapstructure:"authorization"`
+	AuthType      string        `mapstructure:"auth_type"`
+	Role          string        `mapstructure:"role"`
+	Service       string        `mapstructure:"service"`
+	Method        string        `mapstructure:"method"`
+	Params        []ParamConfig `mapstructure:"params"`
 }
 
 // SetupRoutes loads the routes from the configuration and sets them up in Gin
-func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, configPath string) error {
+func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool) error {
 	// Load the route configuration
-	routeConfigs, err := LoadRouteConfigs(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to load route configs: %w", err)
+	viper.SetConfigName("routes")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("./config")
+
+	if err := viper.ReadInConfig(); err != nil {
+		return err
+	}
+
+	var routes []RouteConfig
+	if err := viper.UnmarshalKey("routes", &routes); err != nil {
+		return err
 	}
 
 	// Register the routes with middlewares
-	for _, routeConfig := range routeConfigs {
+	for _, routeConfig := range routes {
 		// Build the middleware stack
 		mws := buildMiddlewareStack(r, routeConfig)
 
