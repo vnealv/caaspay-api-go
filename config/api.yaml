@@ -5,13 +5,14 @@ metrics_enabled: true
 datadog_addr: "codensmoke-support-datadog-agent-1"  # Address for Datadog metrics
 log_level: info                 # Log level (e.g., debug, info, warn, error)
 port: 8080                      # Port for the API server (default: 8080)
-host: "127.0.0.1"               # Host for the API server (default: "127.0.0.1")
+host: "0.0.0.0"               # Host for the API server (default: "127.0.0.1")
 rpc_timeout: 60s                # Default RPC timeout (default: 60 seconds)
 env: development
 
 trusted_proxies:
   - "127.0.0.1"
   - "172.17.0.0/24"
+  - "172.18.0.0/19"
 
 rate_limit:
   enabled: true

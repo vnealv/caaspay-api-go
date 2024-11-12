@@ -18,15 +18,17 @@ import (
 
 // RouteConfig represents the configuration for a single route
 type RouteConfig struct {
-	Path          string               `mapstructure:"path"`
-	Type          string               `mapstructure:"type"`
-	Authorization bool                 `mapstructure:"authorization"`
-	AuthType      string               `mapstructure:"auth_type"`
-	Role          string               `mapstructure:"role"`
-	Service       string               `mapstructure:"service"`
-	Method        string               `mapstructure:"method"`
-	Params        []ParamConfig        `mapstructure:"params"`
-	RateLimit     RouteRateLimitConfig `mapstructure:"rate_limit"`
+	Path              string               `mapstructure:"path"`
+	Type              string               `mapstructure:"type"`
+	Authorization     bool                 `mapstructure:"authorization"`
+	AuthType          string               `mapstructure:"auth_type"`
+	Role              string               `mapstructure:"role"`
+	Service           string               `mapstructure:"service"`
+	Method            string               `mapstructure:"method"`
+	Params            []ParamConfig        `mapstructure:"params"`
+	RateLimit         RouteRateLimitConfig `mapstructure:"rate_limit"`
+	Description       string               `mapstructure:"description"`
+	ResponseStructure map[string]string    `mapstructure:"response_structure"`
 }
 
 // ParamConfig defines the structure for route parameters
@@ -44,24 +46,38 @@ type RouteRateLimitConfig struct {
 	Burst int `mapstructure:"burst"`
 }
 
-// SetupRoutes loads the routes from the configuration and sets them up in Gin
-func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Config) error {
-	// Load the route configuration
+// LoadRouteConfigs loads and returns the route configurations from the YAML file.
+func LoadRouteConfigs(cfg *config.Config) ([]RouteConfig, error) {
 	viper.SetConfigName("routes")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")
 
 	if err := viper.ReadInConfig(); err != nil {
-		return err
+		return nil, fmt.Errorf("failed to read routes config: %w", err)
 	}
 
 	var routes []RouteConfig
 	if err := viper.UnmarshalKey("routes", &routes); err != nil {
-		return err
+		return nil, fmt.Errorf("failed to parse routes config: %w", err)
 	}
 
+	// Set default rate limits if not defined
+	for i := range routes {
+		if routes[i].RateLimit.Limit == 0 {
+			routes[i].RateLimit.Limit = cfg.RateLimit.DefaultLimit
+		}
+		if routes[i].RateLimit.Burst == 0 {
+			routes[i].RateLimit.Burst = cfg.RateLimit.DefaultBurst
+		}
+	}
+
+	return routes, nil
+}
+
+// SetupRoutes loads the routes from the configuration and sets them up in Gin
+func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Config, routeConfigs []RouteConfig) error {
 	// Register the routes with middlewares
-	for _, routeConfig := range routes {
+	for _, routeConfig := range routeConfigs {
 		// Build the middleware stack
 		mws := buildMiddlewareStack(r, routeConfig)
 		if routeConfig.RateLimit.Limit == 0 {

@@ -110,21 +110,48 @@ func (l *Logger) LogWithStats(logLevel, msg string, metric map[string]string, ex
 	}
 }
 
-// Middleware provides a Gin middleware for logging
+// Middleware provides a Gin middleware for logging, including Cloudflare headers if present.
 func (l *Logger) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
+
+		// Cloudflare-specific headers to check
+		cloudflareHeaders := []string{
+			"CF-Connecting-IP",  // Original visitor IP
+			"CF-IPCountry",      // Country code
+			"CF-Ray",            // Unique request ID in Cloudflare
+			"CF-Visitor",        // JSON with scheme info
+			"X-Forwarded-For",   // Proxied IP
+			"X-Forwarded-Proto", // Original protocol
+		}
+
+		// Collect Cloudflare headers if present
+		cfHeaderData := make(map[string]string)
+		for _, header := range cloudflareHeaders {
+			if value := c.GetHeader(header); value != "" {
+				cfHeaderData[header] = value
+			}
+		}
+
 		c.Next()
 		latency := time.Since(start)
-
 		statusCode := c.Writer.Status()
-		l.logger.WithFields(logrus.Fields{
+
+		// Log request with essential info and Cloudflare headers
+		logEntry := l.logger.WithFields(logrus.Fields{
 			"status_code": statusCode,
 			"latency":     latency,
 			"client_ip":   c.ClientIP(),
 			"method":      c.Request.Method,
 			"path":        c.Request.URL.Path,
-		}).Info("request handled")
+		})
+
+		// Add Cloudflare header fields if present
+		for key, value := range cfHeaderData {
+			logEntry = logEntry.WithField(key, value)
+		}
+
+		logEntry.Info("request handled")
 	}
 }
 
