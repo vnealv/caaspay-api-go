@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func main() {
@@ -24,17 +25,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	// Initialize metrics based on configuration
-	var metricsClient logging.Metrics
-	//    if appConfig.MetricsEnabled {
-	if 1 < 0 {
-		//metricsClient, err = metrics.NewDataDogMetrics(appConfig.DatadogAddr)
-		var err error
-		metricsClient, err = metrics.NewDataDogMetrics("127.0.0.1:8125")
-		if err != nil {
-			log.Fatalf("Failed to initialize Datadog metrics: %v", err)
-		}
+	// Initialize Datadog metrics and OpenTelemetry tracer
+	metricsClient, err := metrics.NewDataDogMetrics(cfg.DatadogAddr, "caaspay-service", cfg.Env)
+	if err != nil {
+		log.Fatalf("Failed to initialize Datadog metrics and tracer: %v", err)
 	}
+	defer metricsClient.Close()
 
 	//logger := logging.NewLogger("caaspay-service", "development", appConfig.MetricsEnabled, metricsClient)
 	logger := logging.NewLogger("caaspay-service", cfg.Env, "debug", false, metricsClient, ctx)
@@ -45,6 +41,7 @@ func main() {
 	r.Use(func(c *gin.Context) {
 		logger.Middleware()(c)
 	})
+	r.Use(otelgin.Middleware("caaspay-api-go"))
 
 	// Initialize Redis broker with options
 	redisOptions := broker.RedisOptions{

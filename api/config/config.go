@@ -1,54 +1,55 @@
 package config
 
 import (
+	"fmt"
 	"github.com/spf13/viper"
 	"time"
 )
 
 type Config struct {
-	MetricsEnabled bool
-	DatadogAddr    string
-	LogLevel       string
-	Env            string
-	Port           int
-	Host           string
-	RPCTimeout     time.Duration
+	MetricsEnabled bool          `mapstructure:"metrics_enabled"`
+	DatadogAddr    string        `mapstructure:"datadog_addr"`
+	LogLevel       string        `mapstructure:"log_level"`
+	Env            string        `mapstructure:"env"`
+	Port           int           `mapstructure:"port"`
+	Host           string        `mapstructure:"host"`
+	RPCTimeout     time.Duration `mapstructure:"rpc_timeout"`
 
-	Redis   RedisConfig
-	RPCPool RPCPoolConfig
-	JWT     JWTConfig
-	OAuth   OAuthConfig
+	Redis   RedisConfig   `mapstructure:"redis"`
+	RPCPool RPCPoolConfig `mapstructure:"rpc_pool"`
+	JWT     JWTConfig     `mapstructure:"jwt"`
+	OAuth   OAuthConfig   `mapstructure:"oauth"`
 }
 
 type RedisConfig struct {
-	IsCluster bool
-	Prefix    string
-	Address   []string
+	IsCluster bool     `mapstructure:"is_cluster"`
+	Prefix    string   `mapstructure:"prefix"`
+	Address   []string `mapstructure:"address"`
 }
 
 type RPCPoolConfig struct {
-	InitialClients       int
-	MaxClients           int
-	MaxRequestsPerClient int
-	MonitorInterval      time.Duration
-	ScaleDown            bool
+	InitialClients       int           `mapstructure:"initial_clients"`
+	MaxClients           int           `mapstructure:"max_clients"`
+	MaxRequestsPerClient int           `mapstructure:"max_requests_per_client"`
+	MonitorInterval      time.Duration `mapstructure:"monitor_interval"`
+	ScaleDown            bool          `mapstructure:"scale_down"`
 }
 
 type JWTConfig struct {
-	TokenExpiry time.Duration
-	JWTSecret   string
+	TokenExpiry time.Duration `mapstructure:"token_expiry"`
+	JWTSecret   string        `mapstructure:"jwt_secret"`
 }
 
 type OAuthConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
-	Endpoint     OAuthEndpoint
+	ClientID     string        `mapstructure:"client_id"`
+	ClientSecret string        `mapstructure:"client_secret"`
+	RedirectURL  string        `mapstructure:"redirect_url"`
+	Endpoint     OAuthEndpoint `mapstructure:"endpoint"`
 }
 
 type OAuthEndpoint struct {
-	AuthURL  string
-	TokenURL string
+	AuthURL  string `mapstructure:"auth_url"`
+	TokenURL string `mapstructure:"token_url"`
 }
 
 func LoadAPIConfig() (*Config, error) {
@@ -57,13 +58,12 @@ func LoadAPIConfig() (*Config, error) {
 	viper.AddConfigPath("./config")
 
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading config: %w", err)
 	}
 
 	var config Config
-
 	if err := viper.Unmarshal(&config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error unmarshalling config: %w", err)
 	}
 
 	// Apply defaults if not set in the YAML file

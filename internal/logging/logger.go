@@ -6,6 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
+	//"go.opentelemetry.io/otel"
+	//"go.opentelemetry.io/otel/propagation"
 )
 
 type Logger struct {
