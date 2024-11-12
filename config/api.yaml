@@ -9,6 +9,10 @@ host: "127.0.0.1"               # Host for the API server (default: "127.0.0.1")
 rpc_timeout: 60s                # Default RPC timeout (default: 60 seconds)
 env: development
 
+trusted_proxies:
+  - "127.0.0.1"
+  - "172.17.0.0/24"
+
 # Redis configuration
 redis:
   is_cluster: false             # Use Redis Cluster (default: false)

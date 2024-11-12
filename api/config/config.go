@@ -14,6 +14,7 @@ type Config struct {
 	Port           int           `mapstructure:"port"`
 	Host           string        `mapstructure:"host"`
 	RPCTimeout     time.Duration `mapstructure:"rpc_timeout"`
+	TrustedProxies []string      `mapstructure:"trusted_proxies"`
 
 	Redis   RedisConfig   `mapstructure:"redis"`
 	RPCPool RPCPoolConfig `mapstructure:"rpc_pool"`

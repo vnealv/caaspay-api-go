@@ -42,6 +42,10 @@ func main() {
 		logger.Middleware()(c)
 	})
 	r.Use(otelgin.Middleware("caaspay-api-go"))
+	// Set trusted proxies based on the configuration
+	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		log.Fatalf("Failed to set trusted proxies: %v", err)
+	}
 
 	// Initialize Redis broker with options
 	redisOptions := broker.RedisOptions{
