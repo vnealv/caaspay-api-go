@@ -13,6 +13,9 @@ trusted_proxies:
   - "127.0.0.1"
   - "172.17.0.0/24"
 
+rate_limit:
+  enabled: true
+
 # Redis configuration
 redis:
   is_cluster: false             # Use Redis Cluster (default: false)

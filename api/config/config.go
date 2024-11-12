@@ -7,14 +7,15 @@ import (
 )
 
 type Config struct {
-	MetricsEnabled bool          `mapstructure:"metrics_enabled"`
-	DatadogAddr    string        `mapstructure:"datadog_addr"`
-	LogLevel       string        `mapstructure:"log_level"`
-	Env            string        `mapstructure:"env"`
-	Port           int           `mapstructure:"port"`
-	Host           string        `mapstructure:"host"`
-	RPCTimeout     time.Duration `mapstructure:"rpc_timeout"`
-	TrustedProxies []string      `mapstructure:"trusted_proxies"`
+	MetricsEnabled bool            `mapstructure:"metrics_enabled"`
+	DatadogAddr    string          `mapstructure:"datadog_addr"`
+	LogLevel       string          `mapstructure:"log_level"`
+	Env            string          `mapstructure:"env"`
+	Port           int             `mapstructure:"port"`
+	Host           string          `mapstructure:"host"`
+	RPCTimeout     time.Duration   `mapstructure:"rpc_timeout"`
+	TrustedProxies []string        `mapstructure:"trusted_proxies"`
+	RateLimit      RateLimitConfig `mapstructure:"rate_limit"`
 
 	Redis   RedisConfig   `mapstructure:"redis"`
 	RPCPool RPCPoolConfig `mapstructure:"rpc_pool"`
@@ -51,6 +52,12 @@ type OAuthConfig struct {
 type OAuthEndpoint struct {
 	AuthURL  string `mapstructure:"auth_url"`
 	TokenURL string `mapstructure:"token_url"`
+}
+
+type RateLimitConfig struct {
+	Enabled      bool `mapstructure:"enabled"`
+	DefaultLimit int  `mapstructure:"default_limit"`
+	DefaultBurst int  `mapstructure:"default_burst"`
 }
 
 func LoadAPIConfig() (*Config, error) {
@@ -94,6 +101,12 @@ func LoadAPIConfig() (*Config, error) {
 	}
 	if config.Redis.Prefix == "" {
 		config.Redis.Prefix = "myriad"
+	}
+	if config.RateLimit.DefaultLimit == 0 {
+		config.RateLimit.DefaultLimit = 5
+	}
+	if config.RateLimit.DefaultBurst == 0 {
+		config.RateLimit.DefaultBurst = 10
 	}
 
 	return &config, nil

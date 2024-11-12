@@ -60,7 +60,7 @@ func main() {
 	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
 
 	// Initialize the routes with the route configuration
-	if err := routes.SetupRoutes(r, rpcClientPool); err != nil {
+	if err := routes.SetupRoutes(r, rpcClientPool, cfg); err != nil {
 		//log.Fatalf("Failed to set up routes: %v", err)
 		logger.LogWithStats("error", "Failed to set up routes", map[string]string{"metric_name": "setup_routes_error", "error": fmt.Sprintf("err %v", err)}, nil)
 	}

@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"caaspay-api-go/api/config"
 	"caaspay-api-go/api/handlers"
 	"caaspay-api-go/api/middleware"
 	"caaspay-api-go/internal/rpc"
@@ -15,6 +16,19 @@ import (
 	"time"
 )
 
+// RouteConfig represents the configuration for a single route
+type RouteConfig struct {
+	Path          string               `mapstructure:"path"`
+	Type          string               `mapstructure:"type"`
+	Authorization bool                 `mapstructure:"authorization"`
+	AuthType      string               `mapstructure:"auth_type"`
+	Role          string               `mapstructure:"role"`
+	Service       string               `mapstructure:"service"`
+	Method        string               `mapstructure:"method"`
+	Params        []ParamConfig        `mapstructure:"params"`
+	RateLimit     RouteRateLimitConfig `mapstructure:"rate_limit"`
+}
+
 // ParamConfig defines the structure for route parameters
 type ParamConfig struct {
 	Name        string `mapstructure:"name"`
@@ -24,20 +38,14 @@ type ParamConfig struct {
 	Pattern     string `mapstructure:"pattern"`
 }
 
-// RouteConfig represents the configuration for a single route
-type RouteConfig struct {
-	Path          string        `mapstructure:"path"`
-	Type          string        `mapstructure:"type"`
-	Authorization bool          `mapstructure:"authorization"`
-	AuthType      string        `mapstructure:"auth_type"`
-	Role          string        `mapstructure:"role"`
-	Service       string        `mapstructure:"service"`
-	Method        string        `mapstructure:"method"`
-	Params        []ParamConfig `mapstructure:"params"`
+// RouteRateLimitConfig holds per-route rate limit settings.
+type RouteRateLimitConfig struct {
+	Limit int `mapstructure:"limit"`
+	Burst int `mapstructure:"burst"`
 }
 
 // SetupRoutes loads the routes from the configuration and sets them up in Gin
-func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool) error {
+func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Config) error {
 	// Load the route configuration
 	viper.SetConfigName("routes")
 	viper.SetConfigType("yaml")
@@ -56,6 +64,18 @@ func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool) error {
 	for _, routeConfig := range routes {
 		// Build the middleware stack
 		mws := buildMiddlewareStack(r, routeConfig)
+		if routeConfig.RateLimit.Limit == 0 {
+			routeConfig.RateLimit.Limit = cfg.RateLimit.DefaultLimit
+		}
+		if routeConfig.RateLimit.Burst == 0 {
+			routeConfig.RateLimit.Burst = cfg.RateLimit.DefaultBurst
+		}
+
+		if cfg.RateLimit.Enabled {
+			//mws = append(mws, rateLimiter.RateLimitMiddleware(routeConfig.Path, limit, burst))
+			//mws = append(mws, middleware.RateLimitMiddleware(route.Path, route.RateLimit.RequestsPerSecond, route.RateLimit.Burst))
+			mws = append(mws, middleware.RateLimitMiddleware(routeConfig.Path, routeConfig.RateLimit.Limit, routeConfig.RateLimit.Burst))
+		}
 
 		// Register the route with the appropriate middlewares
 		log.Printf("FF %v %v", routeConfig, mws)
