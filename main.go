@@ -14,12 +14,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	//    r := gin.Default()
 
+	ctx := context.Background()
 	cfg, err := config.LoadAPIConfig()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	//logger := logging.NewLogger("caaspay-service", "development", appConfig.MetricsEnabled, metricsClient)
-	logger := logging.NewLogger("caaspay-service", "development", false, metricsClient)
+	logger := logging.NewLogger("caaspay-service", cfg.Env, "debug", false, metricsClient, ctx)
 
 	// Set up Gin with logger middleware
 	// gin.SetMode(gin.ReleaseMode)
@@ -54,9 +54,6 @@ func main() {
 	}
 	redisBroker := broker.NewRedisBroker(redisOptions)
 
-	// Set up a context for the RPC clients
-	ctx := context.Background()
-
 	// Initialize the RPC client pool using the Redis broker
 	rpcClientPool := rpc.NewRPCClientPool(ctx, 4, 10, 2, redisBroker, 5*time.Second, logger)
 	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
@@ -64,7 +61,7 @@ func main() {
 	// Initialize the routes with the route configuration
 	if err := routes.SetupRoutes(r, rpcClientPool); err != nil {
 		//log.Fatalf("Failed to set up routes: %v", err)
-		logger.LogAndRecord(logrus.ErrorLevel, "Failed to set up routes", "setup_routes_error", map[string]string{"error": fmt.Sprintf("err %v", err)})
+		logger.LogWithStats("error", "Failed to set up routes", map[string]string{"metric_name": "setup_routes_error", "error": fmt.Sprintf("err %v", err)}, nil)
 	}
 
 	// Start the API server

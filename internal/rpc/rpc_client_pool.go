@@ -5,7 +5,6 @@ import (
 	"caaspay-api-go/internal/logging"
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
@@ -45,7 +44,7 @@ func NewRPCClientPool(ctx context.Context, initialClients, maxClients, maxReques
 		if err := client.Start(); err == nil {
 			pool.clients = append(pool.clients, client)
 			pool.activeRequests[client] = 0
-			logger.LogAndRecord(logrus.InfoLevel, "Added Client to pool", "client_pool_scale_up", map[string]string{"client_count": fmt.Sprintf("%d", 1)})
+			logger.LogWithStats("info", "Added Client to pool", map[string]string{"metric_name": "client_pool_scale_up", "metric_value": fmt.Sprintf("%d", 1)}, nil)
 		}
 	}
 
@@ -73,7 +72,7 @@ func (p *RPCClientPool) GetClient(timeout time.Duration) (*RPCClient, error) {
 		if err := newClient.Start(); err == nil {
 			p.clients = append(p.clients, newClient)
 			p.activeRequests[newClient] = 1
-			p.logger.LogAndRecord(logrus.InfoLevel, "Added Client to pool", "client_pool_scale_up", map[string]string{"client_count": fmt.Sprintf("%d", 1)})
+			//p.logger.LogAndRecord(logrus.InfoLevel, "Added Client to pool", "client_pool_scale_up", map[string]string{"client_count": fmt.Sprintf("%d", 1)})
 			return newClient, nil
 		}
 	}
@@ -126,12 +125,12 @@ func (p *RPCClientPool) monitorAndScaleDown() {
 				idleCount := 0
 				for i := len(p.clients) - 1; i >= p.initialClients; i-- {
 					client := p.clients[i]
-					p.logger.LogAndRecord(logrus.InfoLevel, "Broker clients Load", "client_pool_count", map[string]string{"count": fmt.Sprintf("%d", p.activeRequests[client]), "client": fmt.Sprintf("%v", client.Whoami)})
+					//p.logger.LogAndRecord(logrus.InfoLevel, "Broker clients Load", "client_pool_count", map[string]string{"count": fmt.Sprintf("%d", p.activeRequests[client]), "client": fmt.Sprintf("%v", client.Whoami)})
 					if p.activeRequests[client] == 0 {
 						//client.Close()
 						// Call the unified Close method
 						if err := client.Close(); err != nil {
-							p.logger.LogAndRecord(logrus.WarnLevel, "Failed to close client", "client_pool_stop_fail", map[string]string{"client": fmt.Sprintf("%v", client), "err": fmt.Sprintf("%v", err)})
+							//p.logger.LogAndRecord(logrus.WarnLevel, "Failed to close client", "client_pool_stop_fail", map[string]string{"client": fmt.Sprintf("%v", client), "err": fmt.Sprintf("%v", err)})
 						}
 						p.clients = p.clients[:i]
 						delete(p.activeRequests, client)
@@ -139,7 +138,7 @@ func (p *RPCClientPool) monitorAndScaleDown() {
 					}
 				}
 				if idleCount > 0 {
-					p.logger.LogAndRecord(logrus.InfoLevel, "Scaled down idle clients", "client_pool_scale_down", map[string]string{"idle_count": fmt.Sprintf("%d", idleCount)})
+					//p.logger.LogAndRecord(logrus.InfoLevel, "Scaled down idle clients", "client_pool_scale_down", map[string]string{"idle_count": fmt.Sprintf("%d", idleCount)})
 				}
 			}
 			p.mutex.Unlock()

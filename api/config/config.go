@@ -9,6 +9,7 @@ type Config struct {
 	MetricsEnabled bool
 	DatadogAddr    string
 	LogLevel       string
+	Env            string
 	Port           int
 	Host           string
 	RPCTimeout     time.Duration

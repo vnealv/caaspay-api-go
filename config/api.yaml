@@ -7,6 +7,7 @@ log_level: info                 # Log level (e.g., debug, info, warn, error)
 port: 8080                      # Port for the API server (default: 8080)
 host: "127.0.0.1"               # Host for the API server (default: "127.0.0.1")
 rpc_timeout: 60s                # Default RPC timeout (default: 60 seconds)
+env: development
 
 # Redis configuration
 redis:
