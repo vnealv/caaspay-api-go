@@ -48,8 +48,10 @@ type RPCPoolConfig struct {
 }
 
 type JWTConfig struct {
-	TokenExpiry time.Duration `mapstructure:"token_expiry"`
-	JWTSecret   string        `mapstructure:"jwt_secret"`
+	TokenExpiry        time.Duration `mapstructure:"token_expiry"`
+	JWTSecret          string        `mapstructure:"jwt_secret"`
+	TokenRenewalWindow time.Duration `mapstructure:"token_renewal_window"`
+	AllowedUsers       []AllowedUser `mapstructure:"allowed_users"`
 }
 
 type JWTCloudflareConfig struct {
@@ -74,6 +76,12 @@ type RateLimitConfig struct {
 	Enabled      bool `mapstructure:"enabled"`
 	DefaultLimit int  `mapstructure:"default_limit"`
 	DefaultBurst int  `mapstructure:"default_burst"`
+}
+
+type AllowedUser struct {
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	Role     string `mapstructure:"role"`
 }
 
 func LoadAPIConfig() (*Config, error) {
@@ -124,6 +132,9 @@ func LoadAPIConfig() (*Config, error) {
 	}
 	if config.JWT.TokenExpiry == 0 {
 		config.JWT.TokenExpiry = 30 * time.Minute
+	}
+	if config.JWT.TokenRenewalWindow == 0 {
+		config.JWT.TokenRenewalWindow = 15 * time.Minute
 	}
 	if config.Redis.Prefix == "" {
 		config.Redis.Prefix = "myriad"

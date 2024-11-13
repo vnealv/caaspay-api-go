@@ -52,6 +52,14 @@ rpc_pool:
 jwt:
   token_expiry: 30m             # Token expiration duration (default: 30 minutes)
   jwt_secret: "supersecretkey"  # Secret key for signing JWT tokens
+  renewal_window: 15m
+  allowed_users:
+    - username: "user1"
+      password: "pass1"
+      role: "admin"
+    - username: "user2"
+      password: "pass2"
+      role: "user"
 
 # OAuth configuration
 oauth:

@@ -100,8 +100,8 @@ func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Co
 
 	// Conditionally add JWT routes if SelfJWTEnabled
 	if cfg.SelfJWTEnabled {
-		r.POST("/jwt/login", handlers.JWTLoginHandler)
-		r.POST("/jwt/renew", handlers.JWTRenewalHandler)
+		r.POST("/jwt/login", handlers.JWTLoginHandler(cfg))
+		r.POST("/jwt/renew", handlers.JWTRenewalHandler(cfg))
 	}
 
 	// Apply global middlewares to the router

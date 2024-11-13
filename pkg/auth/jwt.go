@@ -1,78 +1,59 @@
 package auth
 
 import (
+	"caaspay-api-go/api/config"
 	"errors"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"time"
 )
-
-// JWTSecret is the secret key for signing tokens (exported now)
-var JWTSecret = []byte("your-secret-key")
 
 // CustomClaims defines the structure of JWT claims
 type CustomClaims struct {
 	UserID string `json:"user_id"`
 	Role   string `json:"role"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
-// GenerateJWT generates a JWT token for the user with a customizable expiration time
-// expirationSconds is optional. If set to 0, it defaults to 1 hour.
-func GenerateJWT(userID, role string, expirationSeconds ...int) (string, error) {
-	// Set default expiration time to 1 hours if no value is passed
-	expiration := 3600
-	if len(expirationSeconds) > 0 && expirationSeconds[0] > 0 {
-		expiration = expirationSeconds[0]
-	}
-
+// GenerateJWT creates a new JWT token using settings from cfg
+func GenerateJWT(cfg *config.Config, userID, role string, expirationSeconds int) (string, error) {
 	claims := CustomClaims{
 		UserID: userID,
 		Role:   role,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Duration(expiration) * time.Second).Unix(),
-			IssuedAt:  time.Now().Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expirationSeconds) * time.Second)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
-	// Create the token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Sign the token with the secret
-	return token.SignedString(JWTSecret)
+	return token.SignedString([]byte(cfg.JWT.JWTSecret))
 }
 
-// ParseJWTToken parses and validates a JWT token string
-func ParseJWTToken(tokenString string) (*CustomClaims, error) {
-	// Parse the JWT and validate the token
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return JWTSecret, nil
-	})
-
-	if err != nil || !token.Valid {
-		return nil, err
-	}
-
-	// Extract and return the claims
-	if claims, ok := token.Claims.(*CustomClaims); ok {
-		return claims, nil
-	}
-
-	return nil, errors.New("invalid token claims")
-}
-
-// RenewJWTToken renews a JWT token if it's within the renewal window (in seconds)
-func RenewJWTToken(tokenString string, renewalWindowSeconds int) (string, error) {
-	// Parse the existing token
-	claims, err := ParseJWTToken(tokenString)
+// RenewJWTToken renews an existing JWT token if it is within the renewal window.
+func RenewJWTToken(cfg *config.Config, tokenString string, renewalWindowSeconds int) (string, error) {
+	claims, err := ParseJWTToken(cfg, tokenString)
 	if err != nil {
 		return "", errors.New("invalid or expired token")
 	}
 
-	// Check if the token is within the renewal window (convert to time.Duration for comparison)
-	if time.Until(time.Unix(claims.ExpiresAt, 0)) > time.Duration(renewalWindowSeconds)*time.Second {
+	if time.Until(claims.ExpiresAt.Time) > time.Duration(renewalWindowSeconds)*time.Second {
 		return "", errors.New("token is not within the renewal window")
 	}
 
-	// Generate a new token with the same user ID and role
-	return GenerateJWT(claims.UserID, claims.Role)
+	return GenerateJWT(cfg, claims.UserID, claims.Role, int(cfg.JWT.TokenExpiry.Seconds()))
+}
+
+// ParseJWTToken parses and validates a JWT token string using the secret from cfg
+func ParseJWTToken(cfg *config.Config, tokenString string) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(cfg.JWT.JWTSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+	claims, ok := token.Claims.(*CustomClaims)
+	if !ok {
+		return nil, errors.New("invalid token claims")
+	}
+	return claims, nil
 }
