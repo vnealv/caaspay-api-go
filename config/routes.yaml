@@ -3,7 +3,7 @@ routes:
     type: "POST"
     authorization: true
     auth_type: "jwt" # Could be jwt, oauth, cloudflare_jwt
-    role: "user"
+    role: "admin"
     service: "control.authentication.login"
     method: "login"
     dec: "name_of_middleware"
