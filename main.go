@@ -2,7 +2,6 @@ package main
 
 import (
 	"caaspay-api-go/api/config"
-	"caaspay-api-go/api/middleware"
 	"caaspay-api-go/api/routes"
 	"caaspay-api-go/internal/broker"
 	"caaspay-api-go/internal/logging"
@@ -52,17 +51,6 @@ func main() {
 		logger.Middleware()(c)
 	})
 	r.Use(otelgin.Middleware("caaspay-api-go"))
-	// Secure headers and CORS: specify trusted origins for CORS
-	trustedOrigins := []string{"https://yourdomain.com", "https://another-trusted-domain.com", "https://api.caaspay.com", "http://api.caaspay.com"}
-	r.Use(middleware.SecurityHeadersMiddleware(trustedOrigins)) // Add security headers
-	r.Use(func(c *gin.Context) {
-		logger.Middleware()(c)
-	})
-	// Set trusted proxies based on the configuration
-	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
-		log.Fatalf("Failed to set trusted proxies: %v", err)
-	}
-	r.Use(middleware.CloudflareMiddleware(logger))
 
 	// Initialize Redis broker with options
 	redisOptions := broker.RedisOptions{
@@ -77,22 +65,24 @@ func main() {
 	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
 
 	// Initialize the routes with the route configuration
-	if err := routes.SetupRoutes(r, rpcClientPool, cfg, routeConfigs); err != nil {
+	if err := routes.SetupRoutes(r, rpcClientPool, cfg, routeConfigs, logger); err != nil {
 		//log.Fatalf("Failed to set up routes: %v", err)
 		logger.LogWithStats("error", "Failed to set up routes", map[string]string{"metric_name": "setup_routes_error", "error": fmt.Sprintf("err %v", err)}, nil)
 	}
 
-	// Generate OpenAPI spec from routeConfigs and additional static routes
-	openAPISpec, err := openapi.GenerateOpenAPISpec(routeConfigs)
-	if err != nil {
-		logger.LogWithStats("error", "Failed to generate OpenAPI spec", map[string]string{"error": err.Error()}, nil)
-	} else {
-		r.GET("/openapi.json", func(c *gin.Context) {
-			c.JSON(http.StatusOK, openAPISpec)
-		})
-	}
+	if cfg.EnableOpenapiSwagger {
+		// Generate OpenAPI spec from routeConfigs and additional static routes
+		openAPISpec, err := openapi.GenerateOpenAPISpec(routeConfigs, cfg)
+		if err != nil {
+			logger.LogWithStats("error", "Failed to generate OpenAPI spec", map[string]string{"error": err.Error()}, nil)
+		} else {
+			r.GET("/openapi.json", func(c *gin.Context) {
+				c.JSON(http.StatusOK, openAPISpec)
+			})
+		}
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/openapi.json")))
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/openapi.json")))
+	}
 
 	// Start the API server
 	if err := r.Run(fmt.Sprintf("%v:%v", cfg.Host, cfg.Port)); err != nil {

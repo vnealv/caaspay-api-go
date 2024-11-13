@@ -7,17 +7,24 @@ import (
 )
 
 type Config struct {
-	MetricsEnabled     bool            `mapstructure:"metrics_enabled"`
-	DatadogAddr        string          `mapstructure:"datadog_addr"`
-	LogLevel           string          `mapstructure:"log_level"`
-	Env                string          `mapstructure:"env"`
-	Port               int             `mapstructure:"port"`
-	Host               string          `mapstructure:"host"`
-	RPCTimeout         time.Duration   `mapstructure:"rpc_timeout"`
-	TrustedProxies     []string        `mapstructure:"trusted_proxies"`
-	RateLimit          RateLimitConfig `mapstructure:"rate_limit"`
-	StatusRouteEnabled bool            `mapstructure:"status_route_enabled"`
-	HealthRouteEnabled bool            `mapstructure:"health_route_enabled"`
+	MetricsEnabled        bool            `mapstructure:"metrics_enabled"`
+	DatadogAddr           string          `mapstructure:"datadog_addr"`
+	LogLevel              string          `mapstructure:"log_level"`
+	Env                   string          `mapstructure:"env"`
+	Port                  int             `mapstructure:"port"`
+	Host                  string          `mapstructure:"host"`
+	RPCTimeout            time.Duration   `mapstructure:"rpc_timeout"`
+	TrustedProxies        []string        `mapstructure:"trusted_proxies"`
+	RateLimit             RateLimitConfig `mapstructure:"rate_limit"`
+	StatusRouteEnabled    bool            `mapstructure:"status_route_enabled"`
+	HealthRouteEnabled    bool            `mapstructure:"health_route_enabled"`
+	SelfJWTEnabled        bool            `mapstructure:"self_jwt_enabled"`
+	EnableSecurityHeaders bool            `mapstructure:"enable_security_headers"`
+	EnableCloudflare      bool            `mapstructure:"enable_cloudflare"`
+	EnableCORS            bool            `mapstructure:"enable_cors"`
+	EnableRBAC            bool            `mapstructure:"enable_rbac"`
+	EnableOpenapiSwagger  bool            `mapstructure:"enable_openapi_swagger"`
+	TrustedOrigins        []string        `mapstructure:"trusted_origins"`
 
 	Redis   RedisConfig   `mapstructure:"redis"`
 	RPCPool RPCPoolConfig `mapstructure:"rpc_pool"`

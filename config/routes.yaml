@@ -1,8 +1,4 @@
 routes:
-  - path: "/health"
-    type: "GET"
-    authorization: false
-
   - path: "/payments"
     type: "POST"
     authorization: true
@@ -10,12 +6,33 @@ routes:
     role: "user"
     service: "control.authentication.login"
     method: "login"
+    dec: "name_of_middleware"
     params:
       - name: "name"
         type: "string"
         required: true
       - name: "age"
-        type: int
+        type: "integer"
+        required: false
+      - name: "test"
+        type: "number"
+        required: true
+      - name: "test2"
+        type: "boolean"
+        required: false
+  - path: "/payments2"
+    type: "POST"
+    authorization: true
+    auth_type: "jwt" # Could be jwt, oauth, cloudflare_jwt
+    role: "user"
+    service: "control.authentication.login"
+    method: "loginjjjj"
+    params:
+      - name: "name"
+        type: "string"
+        required: true
+      - name: "age"
+        type: "numeric"
         required: false
 
 

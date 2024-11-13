@@ -4,12 +4,14 @@ import (
 	"caaspay-api-go/api/config"
 	"caaspay-api-go/api/handlers"
 	"caaspay-api-go/api/middleware"
+	"caaspay-api-go/internal/logging"
 	"caaspay-api-go/internal/rpc"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -75,33 +77,40 @@ func LoadRouteConfigs(cfg *config.Config) ([]RouteConfig, error) {
 }
 
 // SetupRoutes loads the routes from the configuration and sets them up in Gin
-func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Config, routeConfigs []RouteConfig) error {
+func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Config, routeConfigs []RouteConfig, logger *logging.Logger) error {
+
+	// Set trusted proxies based on the configuration
+	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		log.Fatalf("Failed to set trusted proxies: %v", err)
+	}
 
 	// Conditionally add health route
 	if cfg.HealthRouteEnabled {
-		r.GET("/health", middleware.HealthMiddleware(rpcClientPool))
+		r.GET("/health", func(c *gin.Context) {
+			handlers.HealthHandler(c, rpcClientPool)
+		})
 	}
 
 	// Conditionally add status route
 	if cfg.StatusRouteEnabled {
-		r.GET("/status", middleware.StatusMiddleware(rpcClientPool))
+		r.GET("/status", func(c *gin.Context) {
+			handlers.StatusHandler(c, rpcClientPool)
+		})
 	}
+
+	// Conditionally add JWT routes if SelfJWTEnabled
+	if cfg.SelfJWTEnabled {
+		r.POST("/jwt/login", handlers.JWTLoginHandler)
+		r.POST("/jwt/renew", handlers.JWTRenewalHandler)
+	}
+
+	// Apply global middlewares to the router
+	addMiddlewareStack(r, cfg, logger)
+
 	// Register the routes with middlewares
 	for _, routeConfig := range routeConfigs {
 		// Build the middleware stack
-		mws := buildMiddlewareStack(r, routeConfig)
-		if routeConfig.RateLimit.Limit == 0 {
-			routeConfig.RateLimit.Limit = cfg.RateLimit.DefaultLimit
-		}
-		if routeConfig.RateLimit.Burst == 0 {
-			routeConfig.RateLimit.Burst = cfg.RateLimit.DefaultBurst
-		}
-
-		if cfg.RateLimit.Enabled {
-			//mws = append(mws, rateLimiter.RateLimitMiddleware(routeConfig.Path, limit, burst))
-			//mws = append(mws, middleware.RateLimitMiddleware(route.Path, route.RateLimit.RequestsPerSecond, route.RateLimit.Burst))
-			mws = append(mws, middleware.RateLimitMiddleware(routeConfig.Path, routeConfig.RateLimit.Limit, routeConfig.RateLimit.Burst))
-		}
+		mws := buildMiddlewareStack(r, routeConfig, cfg)
 
 		// Register the route with the appropriate middlewares
 		log.Printf("FF %v %v", routeConfig, mws)
@@ -118,24 +127,47 @@ func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Co
 	return nil
 }
 
-// Global flags to ensure each login route is added only once
-var jwtLoginRegistered = false
-var oauthLoginRegistered = false
+// addMiddlewareStack creates and adds a global middleware stack based on the configuration
+func addMiddlewareStack(r *gin.Engine, cfg *config.Config, logger *logging.Logger) {
+	// Apply security headers if enabled
+	if cfg.EnableSecurityHeaders {
+		r.Use(middleware.SecurityHeadersMiddleware(cfg.TrustedOrigins))
+	}
+
+	// Apply CORS middleware if enabled
+	if cfg.EnableCORS {
+		r.Use(middleware.CORSMiddleware(cfg.TrustedOrigins))
+	}
+
+	// Apply Cloudflare headers middleware if enabled
+	if cfg.EnableCloudflare {
+		r.Use(middleware.CloudflareMiddleware(logger))
+	}
+
+	// Apply RBAC middleware if enabled
+	//if cfg.EnableRBAC {
+	//    r.Use(middleware.RBACMiddleware())
+	//}
+}
 
 // buildMiddlewareStack creates the middleware stack for a given route
-func buildMiddlewareStack(r *gin.Engine, route RouteConfig) []gin.HandlerFunc {
+func buildMiddlewareStack(r *gin.Engine, route RouteConfig, cfg *config.Config) []gin.HandlerFunc {
 	mws := []gin.HandlerFunc{} // Middleware stack
 
+	if route.RateLimit.Limit == 0 {
+		route.RateLimit.Limit = cfg.RateLimit.DefaultLimit
+	}
+	if route.RateLimit.Burst == 0 {
+		route.RateLimit.Burst = cfg.RateLimit.DefaultBurst
+	}
+
+	if cfg.RateLimit.Enabled {
+		mws = append(mws, middleware.RateLimitMiddleware(route.Path, route.RateLimit.Limit, route.RateLimit.Burst))
+	}
 	// Add authentication middleware based on auth_type
 	if route.Authorization {
 		switch route.AuthType {
 		case "jwt":
-			// Register the JWT login route if not already registered
-			if !jwtLoginRegistered {
-				r.POST("/jwt/login", handlers.JWTLoginHandler)
-				r.POST("/jwt/renew", handlers.JWTRenewalHandler)
-				jwtLoginRegistered = true
-			}
 			mws = append(mws, middleware.JWTAuthMiddleware())
 		case "oauth":
 			mws = append(mws, middleware.OAuthMiddleware())
@@ -145,7 +177,7 @@ func buildMiddlewareStack(r *gin.Engine, route RouteConfig) []gin.HandlerFunc {
 	}
 
 	// Add RBAC middleware if a role is specified
-	if route.Role != "" {
+	if route.Role != "" && cfg.EnableRBAC {
 		mws = append(mws, middleware.RBACMiddleware(route.Role))
 	}
 
@@ -233,13 +265,13 @@ func validateAndExtractParams(c *gin.Context, routeConfig RouteConfig) (map[stri
 
 		// If the parameter exists, validate its type and pattern
 		if paramValue, exists := args[param.Name]; exists {
-			value, ok := paramValue.(string)
-			if !ok {
-				return nil, fmt.Errorf("unable to parse parameter %s: - %s", param.Name, generateDescription(param))
-			}
 			switch param.Type {
 			case "string":
 				// Validate against the pattern if one is provided
+				value, ok := paramValue.(string)
+				if !ok {
+					return nil, fmt.Errorf("unable to parse parameter %s: - %s", param.Name, generateDescription(param))
+				}
 				if param.Pattern != "" {
 					matched, err := regexp.MatchString(param.Pattern, value)
 					if err != nil || !matched {
@@ -247,27 +279,32 @@ func validateAndExtractParams(c *gin.Context, routeConfig RouteConfig) (map[stri
 					}
 				}
 
-			case "int":
-				if _, err := strconv.Atoi(value); err != nil {
+			case "integer":
+				// Handle int conversion for both string and numeric input
+				intValue, err := convertToInt(paramValue)
+				if err != nil {
 					return nil, fmt.Errorf("invalid parameter type for %s: expected int - %s", param.Name, generateDescription(param))
 				}
+				args[param.Name] = intValue
 
-			case "float":
-				if _, err := strconv.ParseFloat(value, 64); err != nil {
+			case "number":
+				// Handle float conversion for both string and numeric input
+				floatValue, err := convertToFloat(paramValue)
+				if err != nil {
 					return nil, fmt.Errorf("invalid parameter type for %s: expected float - %s", param.Name, generateDescription(param))
 				}
+				args[param.Name] = floatValue
 
-			case "bool":
-				if _, err := strconv.ParseBool(value); err != nil {
+			case "boolean":
+				// Handle boolean conversion for both string and native bool
+				boolValue, err := convertToBool(paramValue)
+				if err != nil {
 					return nil, fmt.Errorf("invalid parameter type for %s: expected bool - %s", param.Name, generateDescription(param))
 				}
-
-			default:
-				return nil, fmt.Errorf("unknown parameter type for %s", param.Name)
+				args[param.Name] = boolValue
 			}
 		}
 	}
-
 	// Filter out extra parameters (not allowed by the config)
 	for passedParamKey, _ := range args {
 		if _, allowedKey := allowedParams[passedParamKey]; !allowedKey {
@@ -277,6 +314,44 @@ func validateAndExtractParams(c *gin.Context, routeConfig RouteConfig) (map[stri
 	}
 
 	return args, nil
+}
+
+// Helper function to convert to int
+func convertToInt(value interface{}) (int, error) {
+	switch v := value.(type) {
+	case float64:
+		return int(v), nil
+	case int:
+		return v, nil
+	case string:
+		return strconv.Atoi(v)
+	default:
+		return 0, fmt.Errorf("unsupported type for int conversion: %v", reflect.TypeOf(value))
+	}
+}
+
+// Helper function to convert to float
+func convertToFloat(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case float64:
+		return v, nil
+	case string:
+		return strconv.ParseFloat(v, 64)
+	default:
+		return 0, fmt.Errorf("unsupported type for float conversion: %v", reflect.TypeOf(value))
+	}
+}
+
+// Helper function to convert to bool
+func convertToBool(value interface{}) (bool, error) {
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case string:
+		return strconv.ParseBool(v)
+	default:
+		return false, fmt.Errorf("unsupported type for bool conversion: %v", reflect.TypeOf(value))
+	}
 }
 
 // generateDescription auto-generates a description for a parameter if not provided

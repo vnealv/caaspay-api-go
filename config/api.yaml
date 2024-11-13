@@ -10,11 +10,20 @@ rpc_timeout: 60s                # Default RPC timeout (default: 60 seconds)
 env: development
 status_route_enabled: true
 health_route_enabled: true
+self_jwt_enabled: true
+enable_security_headers: true
+enable_cloudflare: true
+enable_cors: true
+enable_rbac: true
+enable_openapi_swagger: true
 
 trusted_proxies:
   - "127.0.0.1"
   - "172.17.0.0/24"
   - "172.18.0.0/19"
+trusted_origins:
+  - "https://api.caaspay.com"
+  - "http://api.caaspay.com"
 
 rate_limit:
   enabled: true
