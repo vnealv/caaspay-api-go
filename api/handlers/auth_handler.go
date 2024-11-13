@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"caaspay-api-go/api/config"
-	"caaspay-api-go/pkg/auth"
+	"caaspay-api-go/internal/auth"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"

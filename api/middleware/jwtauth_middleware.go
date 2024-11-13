@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"caaspay-api-go/api/config"
-	"caaspay-api-go/pkg/auth"
+	"caaspay-api-go/internal/auth"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
