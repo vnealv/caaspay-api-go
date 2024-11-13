@@ -168,11 +168,11 @@ func buildMiddlewareStack(r *gin.Engine, route RouteConfig, cfg *config.Config) 
 	if route.Authorization {
 		switch route.AuthType {
 		case "jwt":
-			mws = append(mws, middleware.JWTAuthMiddleware())
+			mws = append(mws, middleware.JWTAuthMiddleware(cfg))
 		case "oauth":
-			mws = append(mws, middleware.OAuthMiddleware())
+			mws = append(mws, middleware.OAuthMiddleware(cfg))
 		case "cloudflare_jwt":
-			mws = append(mws, middleware.CloudflareJWTMiddleware())
+			mws = append(mws, middleware.CloudflareJWTMiddleware(cfg))
 		}
 	}
 

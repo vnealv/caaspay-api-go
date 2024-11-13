@@ -26,10 +26,11 @@ type Config struct {
 	EnableOpenapiSwagger  bool            `mapstructure:"enable_openapi_swagger"`
 	TrustedOrigins        []string        `mapstructure:"trusted_origins"`
 
-	Redis   RedisConfig   `mapstructure:"redis"`
-	RPCPool RPCPoolConfig `mapstructure:"rpc_pool"`
-	JWT     JWTConfig     `mapstructure:"jwt"`
-	OAuth   OAuthConfig   `mapstructure:"oauth"`
+	Redis         RedisConfig         `mapstructure:"redis"`
+	RPCPool       RPCPoolConfig       `mapstructure:"rpc_pool"`
+	JWT           JWTConfig           `mapstructure:"jwt"`
+	OAuth         OAuthConfig         `mapstructure:"oauth"`
+	JWTCloudflare JWTCloudflareConfig `mapstructure:"jwt_cloudflare"`
 }
 
 type RedisConfig struct {
@@ -49,6 +50,12 @@ type RPCPoolConfig struct {
 type JWTConfig struct {
 	TokenExpiry time.Duration `mapstructure:"token_expiry"`
 	JWTSecret   string        `mapstructure:"jwt_secret"`
+}
+
+type JWTCloudflareConfig struct {
+	PublicKeyURL  string        `mapstructure:"public_key_url"`
+	Issuer        string        `mapstructure:"issuer"`
+	CacheDuration time.Duration `mapstructure:"cache_duration"`
 }
 
 type OAuthConfig struct {
@@ -116,6 +123,9 @@ func LoadAPIConfig() (*Config, error) {
 	}
 	if config.RateLimit.DefaultBurst == 0 {
 		config.RateLimit.DefaultBurst = 10
+	}
+	if config.JWTCloudflare.CacheDuration == 0 {
+		config.JWTCloudflare.CacheDuration = time.Hour
 	}
 
 	return &config, nil

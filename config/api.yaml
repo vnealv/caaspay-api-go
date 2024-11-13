@@ -64,6 +64,7 @@ oauth:
 
 # Cloudflare JWT configuration (example structure, customize as needed)
 jwt_cloudflare:
-  public_key: "your-cloudflare-public-key" # RSA public key for Cloudflare JWT verification
-  issuer: "https://your.cloudflareissuer.com"
+  public_key_url: "https://your-team-name.cloudflareaccess.com/cdn-cgi/access/certs" # JWKS endpoint
+  issuer: "https://your-team-name.cloudflareaccess.com"                             # Expected JWT issuer
+  cache_duration: "1h"
 

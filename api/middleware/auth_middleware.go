@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"caaspay-api-go/api/config"
 	"caaspay-api-go/pkg/auth"
 	"context"
 	"github.com/dgrijalva/jwt-go"
@@ -11,7 +12,7 @@ import (
 )
 
 // JWTAuthMiddleware checks for valid JWT token in Authorization header
-func JWTAuthMiddleware() gin.HandlerFunc {
+func JWTAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")
 
@@ -62,7 +63,7 @@ var oauthConfig = oauth2.Config{
 }
 
 // OAuthMiddleware checks for a valid OAuth token in the Authorization header
-func OAuthMiddleware() gin.HandlerFunc {
+func OAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")
 
@@ -83,39 +84,6 @@ func OAuthMiddleware() gin.HandlerFunc {
 		_, err := tokenSource.Token()
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OAuth token"})
-			c.Abort()
-			return
-		}
-
-		// If the token is valid, continue processing
-		c.Next()
-	}
-}
-
-// CloudflarePublicKey is the RSA public key used to validate Cloudflare JWT tokens
-var CloudflarePublicKey = []byte(`-----BEGIN PUBLIC KEY-----
-YOUR-CLOUDFLARE-RSA-PUBLIC-KEY-HERE
------END PUBLIC KEY-----`)
-
-// CloudflareJWTMiddleware validates tokens issued by Cloudflare
-func CloudflareJWTMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tokenString := c.GetHeader("CF-Access-JWT-Assertion")
-
-		// Check if the token is present
-		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Cloudflare JWT missing"})
-			c.Abort()
-			return
-		}
-
-		// Parse and validate the JWT token
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return jwt.ParseRSAPublicKeyFromPEM(CloudflarePublicKey)
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Cloudflare JWT"})
 			c.Abort()
 			return
 		}

@@ -23,16 +23,16 @@ routes:
   - path: "/payments2"
     type: "POST"
     authorization: true
-    auth_type: "jwt" # Could be jwt, oauth, cloudflare_jwt
+    auth_type: "cloudflare_jwt" # Could be jwt, oauth, cloudflare_jwt
     role: "user"
     service: "control.authentication.login"
-    method: "loginjjjj"
+    method: "login"
     params:
       - name: "name"
         type: "string"
         required: true
       - name: "age"
-        type: "numeric"
+        type: "number"
         required: false
 
 
