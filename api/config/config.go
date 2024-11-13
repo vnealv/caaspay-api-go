@@ -77,17 +77,27 @@ type RateLimitConfig struct {
 }
 
 func LoadAPIConfig() (*Config, error) {
-	viper.SetConfigName("api")
-	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./config")
+	viper.SetConfigType("yaml")
 
+	// Load main API config
+	viper.SetConfigName("api")
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("error reading config: %w", err)
+		return nil, fmt.Errorf("error reading api.yaml: %w", err)
 	}
 
+	// Initialize config struct with loaded values
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("error unmarshalling config: %w", err)
+		return nil, fmt.Errorf("error unmarshalling api config: %w", err)
+	}
+
+	// Load credentials if available and overlay on top of the API config
+	viper.SetConfigName("credentials")
+	if err := viper.MergeInConfig(); err == nil {
+		if err := viper.Unmarshal(&config); err != nil {
+			return nil, fmt.Errorf("error unmarshalling credentials config: %w", err)
+		}
 	}
 
 	// Apply defaults if not set in the YAML file
