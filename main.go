@@ -60,7 +60,7 @@ func main() {
 	redisBroker := broker.NewRedisBroker(redisOptions)
 
 	// Initialize the RPC client pool using the Redis broker
-	rpcClientPool := rpc.NewRPCClientPool(ctx, 4, 10, 2, redisBroker, 5*time.Second, logger)
+	rpcClientPool := rpc.NewRPCClientPool(ctx, cfg.Redis.InitialClients, cfg.Redis.MaxClients, cfg.Redis.MaxRequestsPerClient, redisBroker, 5*time.Second, logger)
 	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
 
 	// Initialize the routes with the route configuration

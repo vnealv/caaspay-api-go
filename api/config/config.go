@@ -35,9 +35,12 @@ type Config struct {
 }
 
 type RedisConfig struct {
-	IsCluster bool     `mapstructure:"is_cluster"`
-	Prefix    string   `mapstructure:"prefix"`
-	Address   []string `mapstructure:"address"`
+	IsCluster            bool     `mapstructure:"is_cluster"`
+	Prefix               string   `mapstructure:"prefix"`
+	Address              []string `mapstructure:"address"`
+	InitialClients       int      `mapstructure:"initial_clients"`
+	MaxClients           int      `mapstructure:"max_clients"`
+	MaxRequestsPerClient int      `mapstructure:"max_requests_per_client"`
 }
 
 type RPCPoolConfig struct {
@@ -90,8 +93,8 @@ func LoadAPIConfig() (*Config, error) {
 	viper.SetConfigType("yaml")
 
 	// Set environment variable prefix to "GOAPI" for consistency
-    viper.SetEnvPrefix("GOAPI")
-    viper.AutomaticEnv()
+	viper.SetEnvPrefix("GOAPI")
+	viper.AutomaticEnv()
 
 	// Load main API config
 	viper.SetConfigName("api")
@@ -114,11 +117,11 @@ func LoadAPIConfig() (*Config, error) {
 	}
 
 	// Map environment variables to struct fields, giving them precedence
-    bindEnvironmentVariables()
+	bindEnvironmentVariables()
 	// Reload into config to override with environment variables
-    if err := viper.Unmarshal(&config); err != nil {
-        return nil, fmt.Errorf("error unmarshalling final config: %w", err)
-    }
+	if err := viper.Unmarshal(&config); err != nil {
+		return nil, fmt.Errorf("error unmarshalling final config: %w", err)
+	}
 
 	// Apply defaults if not set in the YAML file
 	if config.Host == "" {
@@ -165,28 +168,31 @@ func LoadAPIConfig() (*Config, error) {
 }
 
 func bindEnvironmentVariables() {
-    // Map specific environment variables to config fields
-    viper.BindEnv("metrics_enabled", "GOAPI_METRICS_ENABLED")
-    viper.BindEnv("datadog_addr", "GOAPI_DATADOG_ADDR")
-    viper.BindEnv("log_level", "GOAPI_LOG_LEVEL")
-    viper.BindEnv("env", "GOAPI_ENV")
-    viper.BindEnv("port", "GOAPI_PORT")
-    viper.BindEnv("host", "GOAPI_HOST")
-    viper.BindEnv("rpc_timeout", "GOAPI_RPC_TIMEOUT")
-    viper.BindEnv("trusted_proxies", "GOAPI_TRUSTED_PROXIES")
-    viper.BindEnv("status_route_enabled", "GOAPI_STATUS_ROUTE_ENABLED")
-    viper.BindEnv("health_route_enabled", "GOAPI_HEALTH_ROUTE_ENABLED")
-    viper.BindEnv("self_jwt_enabled", "GOAPI_SELF_JWT_ENABLED")
-    viper.BindEnv("enable_security_headers", "GOAPI_ENABLE_SECURITY_HEADERS")
-    viper.BindEnv("enable_cloudflare", "GOAPI_ENABLE_CLOUDFLARE")
-    viper.BindEnv("enable_cors", "GOAPI_ENABLE_CORS")
-    viper.BindEnv("enable_rbac", "GOAPI_ENABLE_RBAC")
-    viper.BindEnv("enable_openapi_swagger", "GOAPI_ENABLE_OPENAPI_SWAGGER")
-    viper.BindEnv("redis.is_cluster", "GOAPI_REDIS_IS_CLUSTER")
-    viper.BindEnv("redis.prefix", "GOAPI_REDIS_PREFIX")
-    viper.BindEnv("redis.address", "GOAPI_REDIS_ADDRESS")
-    viper.BindEnv("jwt.token_expiry", "GOAPI_JWT_TOKEN_EXPIRY")
-    viper.BindEnv("jwt.jwt_secret", "GOAPI_JWT_SECRET")
-    viper.BindEnv("jwt_cloudflare.public_key_url", "GOAPI_JWT_CLOUDFLARE_PUBLIC_KEY_URL")
-    viper.BindEnv("jwt_cloudflare.issuer", "GOAPI_JWT_CLOUDFLARE_ISSUER")
+	// Map specific environment variables to config fields
+	viper.BindEnv("metrics_enabled", "GOAPI_METRICS_ENABLED")
+	viper.BindEnv("datadog_addr", "GOAPI_DATADOG_ADDR")
+	viper.BindEnv("log_level", "GOAPI_LOG_LEVEL")
+	viper.BindEnv("env", "GOAPI_ENV")
+	viper.BindEnv("port", "GOAPI_PORT")
+	viper.BindEnv("host", "GOAPI_HOST")
+	viper.BindEnv("rpc_timeout", "GOAPI_RPC_TIMEOUT")
+	viper.BindEnv("trusted_proxies", "GOAPI_TRUSTED_PROXIES")
+	viper.BindEnv("status_route_enabled", "GOAPI_STATUS_ROUTE_ENABLED")
+	viper.BindEnv("health_route_enabled", "GOAPI_HEALTH_ROUTE_ENABLED")
+	viper.BindEnv("self_jwt_enabled", "GOAPI_SELF_JWT_ENABLED")
+	viper.BindEnv("enable_security_headers", "GOAPI_ENABLE_SECURITY_HEADERS")
+	viper.BindEnv("enable_cloudflare", "GOAPI_ENABLE_CLOUDFLARE")
+	viper.BindEnv("enable_cors", "GOAPI_ENABLE_CORS")
+	viper.BindEnv("enable_rbac", "GOAPI_ENABLE_RBAC")
+	viper.BindEnv("enable_openapi_swagger", "GOAPI_ENABLE_OPENAPI_SWAGGER")
+	viper.BindEnv("redis.is_cluster", "GOAPI_REDIS_IS_CLUSTER")
+	viper.BindEnv("redis.prefix", "GOAPI_REDIS_PREFIX")
+	viper.BindEnv("redis.address", "GOAPI_REDIS_ADDRESS")
+	viper.BindEnv("redis.initial_clients", "GOAPI_REDIS_INITIAL_CLIENTS")
+	viper.BindEnv("redis.max_clients", "GOAPI_REDIS_MAX_CLIENTS")
+	viper.BindEnv("redis.max_requests_per_client", "GOAPI_REDIS_MAX_REQUESTS_PER_CLIENT")
+	viper.BindEnv("jwt.token_expiry", "GOAPI_JWT_TOKEN_EXPIRY")
+	viper.BindEnv("jwt.jwt_secret", "GOAPI_JWT_SECRET")
+	viper.BindEnv("jwt_cloudflare.public_key_url", "GOAPI_JWT_CLOUDFLARE_PUBLIC_KEY_URL")
+	viper.BindEnv("jwt_cloudflare.issuer", "GOAPI_JWT_CLOUDFLARE_ISSUER")
 }
