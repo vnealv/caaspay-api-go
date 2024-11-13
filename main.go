@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -60,7 +59,7 @@ func main() {
 	redisBroker := broker.NewRedisBroker(redisOptions)
 
 	// Initialize the RPC client pool using the Redis broker
-	rpcClientPool := rpc.NewRPCClientPool(ctx, cfg.Redis.InitialClients, cfg.Redis.MaxClients, cfg.Redis.MaxRequestsPerClient, redisBroker, 5*time.Second, logger)
+	rpcClientPool := rpc.NewRPCClientPool(ctx, cfg.RPCPool.InitialClients, cfg.RPCPool.MaxClients, cfg.RPCPool.MaxRequestsPerClient, redisBroker, cfg.RPCPool.MonitorInterval, cfg.RPCPool.ScaleDown, logger)
 	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
 
 	// Initialize the routes with the route configuration

@@ -2,6 +2,9 @@
 
 # General configuration
 app_name: "caaspay-api"
+api_title: "CaasPay API"
+api_description: "API documentation for CaasPay"
+api_version: "1.0.0"
 metrics_enabled: true
 datadog_addr: "codensmoke-support-datadog-agent-1"  # Address for Datadog metrics
 log_level: info                 # Log level (e.g., debug, info, warn, error)
@@ -33,9 +36,6 @@ rate_limit:
 redis:
   is_cluster: true             # Use Redis Cluster (default: false)
   prefix: "myriad"              # Prefix for Redis keys (default: "myriad")
-  initial_clients: 4
-  max_clients: 10
-  max_requests_per_client: 10
   address:                      # Redis server addresses (single instance or cluster nodes)
     - "codensmoke-support-redis-main-0-1:6379"
     - "codensmoke-support-redis-main-1-1:6379"
@@ -50,7 +50,7 @@ rpc_pool:
   max_clients: 20               # Maximum number of RPC clients (default: 20)
   max_request_per_client: 10    # Max requests each client can handle (default: 10)
   monitor_interval: 15s         # Interval to monitor and scale the pool (default: 15 seconds)
-  scale_down: true              # Enable automatic scale-down of idle clients (default: false)
+  scale_down: false              # Enable automatic scale-down of idle clients (default: false)
 
 # JWT configuration
 jwt:

@@ -77,9 +77,9 @@ func GenerateOpenAPISpec(routeConfigs []routes.RouteConfig, cfg *config.Config) 
 	openAPISpec := &OpenAPISpec{
 		OpenAPI: "3.0.3",
 		Info: Info{
-			Title:       "CaasPay API",
-			Description: "API documentation for CaasPay",
-			Version:     "1.0.0",
+			Title:       cfg.API_Title,
+			Description: cfg.API_Description,
+			Version:     cfg.API_Version,
 		},
 		Paths: make(map[string]PathItem),
 		Components: Components{

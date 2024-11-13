@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// RPCClientPool manages a pool of RPC clients with active request limits and auto-scaling capabilities
 type RPCClientPool struct {
 	clients              []*RPCClient
 	activeRequests       map[*RPCClient]int
@@ -24,8 +23,7 @@ type RPCClientPool struct {
 	ctx                  context.Context
 }
 
-// NewRPCClientPool initializes a new pool of RPC clients with configurable limits and monitoring interval
-func NewRPCClientPool(ctx context.Context, initialClients, maxClients, maxRequestsPerClient int, broker broker.Broker, monitorInterval time.Duration, logger *logging.Logger) *RPCClientPool {
+func NewRPCClientPool(ctx context.Context, initialClients, maxClients, maxRequestsPerClient int, broker broker.Broker, monitorInterval time.Duration, scaleDown bool, logger *logging.Logger) *RPCClientPool {
 	pool := &RPCClientPool{
 		clients:              make([]*RPCClient, 0, initialClients),
 		activeRequests:       make(map[*RPCClient]int),
@@ -34,31 +32,105 @@ func NewRPCClientPool(ctx context.Context, initialClients, maxClients, maxReques
 		maxClients:           maxClients,
 		broker:               broker,
 		monitorInterval:      monitorInterval,
+		scalingDown:          scaleDown,
 		logger:               logger,
 		ctx:                  ctx,
 	}
 
-	// Initialize the initial pool of clients
 	for i := 0; i < initialClients; i++ {
 		client := NewRPCClient(broker, ctx)
 		if err := client.Start(); err == nil {
 			pool.clients = append(pool.clients, client)
 			pool.activeRequests[client] = 0
-			logger.LogWithStats("info", "Added Client to pool", map[string]string{"metric_name": "client_pool_scale_up", "metric_value": fmt.Sprintf("%d", 1)}, nil)
+			logger.LogWithStats("info", "Added Client to pool", map[string]string{
+				"metric_name":  "client_pool_scale_up",
+				"metric_value": fmt.Sprintf("%d", 1),
+			}, nil)
 		}
 	}
 
-	// Start monitoring and scaling down if needed
-	go pool.monitorAndScaleDown()
+	go pool.monitorPoolStatus()
+	if scaleDown {
+		go pool.scaleDownClients()
+	}
 	return pool
 }
 
-// GetClient retrieves a client from the pool, creating a new one if all are busy
+// Monitor the pool status: logs active client count and requests per client.
+func (p *RPCClientPool) monitorPoolStatus() {
+	ticker := time.NewTicker(p.monitorInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			p.mutex.Lock()
+			activeClientCount := len(p.clients)
+			activeRequestsCount := 0
+			for _, requests := range p.activeRequests {
+				activeRequestsCount += requests
+			}
+			p.logger.LogWithStats("info", "Monitoring RPC Client Pool", map[string]string{
+				"metric_name":         "client_pool_status",
+				"active_client_count": fmt.Sprintf("%d", activeClientCount),
+				"active_requests":     fmt.Sprintf("%d", activeRequestsCount),
+			}, nil)
+			p.mutex.Unlock()
+		case <-p.ctx.Done():
+			return
+		}
+	}
+}
+
+// Scale down the pool by removing idle clients if scaling is enabled.
+func (p *RPCClientPool) scaleDownClients() {
+	ticker := time.NewTicker(p.monitorInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if !p.scalingDown {
+				continue
+			}
+
+			p.mutex.Lock()
+			if len(p.clients) > p.initialClients {
+				idleCount := 0
+				for i := len(p.clients) - 1; i >= p.initialClients; i-- {
+					client := p.clients[i]
+					if p.activeRequests[client] == 0 {
+						if err := client.Close(); err == nil {
+							p.clients = p.clients[:i]
+							delete(p.activeRequests, client)
+							idleCount++
+						} else {
+							p.logger.LogWithStats("warn", "Failed to close client", map[string]string{
+								"metric_name": "client_pool_stop_fail",
+								"client":      client.Whoami,
+								"error":       fmt.Sprintf("%v", err),
+							}, nil)
+						}
+					}
+				}
+				if idleCount > 0 {
+					p.logger.LogWithStats("info", "Scaled down idle clients", map[string]string{
+						"metric_name": "client_pool_scale_down",
+						"idle_count":  fmt.Sprintf("%d", idleCount),
+					}, nil)
+				}
+			}
+			p.mutex.Unlock()
+		case <-p.ctx.Done():
+			return
+		}
+	}
+}
+
 func (p *RPCClientPool) GetClient(timeout time.Duration) (*RPCClient, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Find an available client with active requests below the limit
 	for _, client := range p.clients {
 		if p.activeRequests[client] < p.maxRequestsPerClient {
 			p.activeRequests[client]++
@@ -66,18 +138,19 @@ func (p *RPCClientPool) GetClient(timeout time.Duration) (*RPCClient, error) {
 		}
 	}
 
-	// Create a new client if all are busy and maxClients limit is not reached
 	if len(p.clients) < p.maxClients {
 		newClient := NewRPCClient(p.broker, p.ctx)
 		if err := newClient.Start(); err == nil {
 			p.clients = append(p.clients, newClient)
 			p.activeRequests[newClient] = 1
-			//p.logger.LogAndRecord(logrus.InfoLevel, "Added Client to pool", "client_pool_scale_up", map[string]string{"client_count": fmt.Sprintf("%d", 1)})
+			p.logger.LogWithStats("info", "Added Client to pool", map[string]string{
+				"metric_name":  "client_pool_scale_up",
+				"metric_value": fmt.Sprintf("%d", 1),
+			}, nil)
 			return newClient, nil
 		}
 	}
 
-	// Wait until a client is available or timeout
 	waitChan := make(chan *RPCClient)
 	go func() {
 		for {
@@ -103,7 +176,6 @@ func (p *RPCClientPool) GetClient(timeout time.Duration) (*RPCClient, error) {
 	}
 }
 
-// ReturnClient releases a client back to the pool after a request completes
 func (p *RPCClientPool) ReturnClient(client *RPCClient) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -113,49 +185,12 @@ func (p *RPCClientPool) ReturnClient(client *RPCClient) {
 	}
 }
 
-func (p *RPCClientPool) monitorAndScaleDown() {
-	ticker := time.NewTicker(p.monitorInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			p.mutex.Lock()
-			if len(p.clients) > p.initialClients {
-				idleCount := 0
-				for i := len(p.clients) - 1; i >= p.initialClients; i-- {
-					client := p.clients[i]
-					//p.logger.LogAndRecord(logrus.InfoLevel, "Broker clients Load", "client_pool_count", map[string]string{"count": fmt.Sprintf("%d", p.activeRequests[client]), "client": fmt.Sprintf("%v", client.Whoami)})
-					if p.activeRequests[client] == 0 {
-						//client.Close()
-						// Call the unified Close method
-						if err := client.Close(); err != nil {
-							//p.logger.LogAndRecord(logrus.WarnLevel, "Failed to close client", "client_pool_stop_fail", map[string]string{"client": fmt.Sprintf("%v", client), "err": fmt.Sprintf("%v", err)})
-						}
-						p.clients = p.clients[:i]
-						delete(p.activeRequests, client)
-						idleCount++
-					}
-				}
-				if idleCount > 0 {
-					//p.logger.LogAndRecord(logrus.InfoLevel, "Scaled down idle clients", "client_pool_scale_down", map[string]string{"idle_count": fmt.Sprintf("%d", idleCount)})
-				}
-			}
-			p.mutex.Unlock()
-		case <-p.ctx.Done():
-			return
-		}
-	}
-}
-
-// ActiveClientCount returns the current number of active clients in the pool
 func (p *RPCClientPool) ActiveClientCount() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return len(p.clients)
 }
 
-// Close closes all clients in the pool
 func (p *RPCClientPool) Close() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()

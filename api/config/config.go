@@ -8,6 +8,9 @@ import (
 
 type Config struct {
 	AppName               string          `mapstructure:"app_name"`
+	API_Title             string          `mapstructure:"api_title"`
+	API_Description       string          `mapstructure:"api_description"`
+	API_Version           string          `mapstructure:"api_version"`
 	MetricsEnabled        bool            `mapstructure:"metrics_enabled"`
 	DatadogAddr           string          `mapstructure:"datadog_addr"`
 	LogLevel              string          `mapstructure:"log_level"`
@@ -35,12 +38,9 @@ type Config struct {
 }
 
 type RedisConfig struct {
-	IsCluster            bool     `mapstructure:"is_cluster"`
-	Prefix               string   `mapstructure:"prefix"`
-	Address              []string `mapstructure:"address"`
-	InitialClients       int      `mapstructure:"initial_clients"`
-	MaxClients           int      `mapstructure:"max_clients"`
-	MaxRequestsPerClient int      `mapstructure:"max_requests_per_client"`
+	IsCluster bool     `mapstructure:"is_cluster"`
+	Prefix    string   `mapstructure:"prefix"`
+	Address   []string `mapstructure:"address"`
 }
 
 type RPCPoolConfig struct {
