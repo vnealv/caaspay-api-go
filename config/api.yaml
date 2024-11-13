@@ -8,6 +8,8 @@ port: 8080                      # Port for the API server (default: 8080)
 host: "0.0.0.0"               # Host for the API server (default: "127.0.0.1")
 rpc_timeout: 60s                # Default RPC timeout (default: 60 seconds)
 env: development
+status_route_enabled: true
+health_route_enabled: true
 
 trusted_proxies:
   - "127.0.0.1"

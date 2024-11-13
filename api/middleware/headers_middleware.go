@@ -18,7 +18,7 @@ func SecurityHeadersMiddleware(allowedOrigins []string) gin.HandlerFunc {
 		c.Writer.Header().Set("X-XSS-Protection", "1; mode=block")
 
 		// Content-Security-Policy restricts external resources
-        // will prevent swagger from loading if enabled
+		// will prevent swagger from loading if enabled
 		//c.Writer.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; object-src 'none'")
 
 		// Strict-Transport-Security enforces HTTPS
@@ -90,8 +90,8 @@ func CloudflareMiddleware(logger *logging.Logger) gin.HandlerFunc {
 			span.SetAttributes(attribute.String(key, value))
 		}
 
-        // to add IP Whitelisting here
-        // depending on CF-Connecting-IP
+		// to add IP Whitelisting here
+		// depending on CF-Connecting-IP
 
 		// Pass the updated context into the request
 		c.Request = c.Request.WithContext(ctx)

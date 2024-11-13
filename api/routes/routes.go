@@ -76,6 +76,16 @@ func LoadRouteConfigs(cfg *config.Config) ([]RouteConfig, error) {
 
 // SetupRoutes loads the routes from the configuration and sets them up in Gin
 func SetupRoutes(r *gin.Engine, rpcClientPool *rpc.RPCClientPool, cfg *config.Config, routeConfigs []RouteConfig) error {
+
+	// Conditionally add health route
+	if cfg.HealthRouteEnabled {
+		r.GET("/health", middleware.HealthMiddleware(rpcClientPool))
+	}
+
+	// Conditionally add status route
+	if cfg.StatusRouteEnabled {
+		r.GET("/status", middleware.StatusMiddleware(rpcClientPool))
+	}
 	// Register the routes with middlewares
 	for _, routeConfig := range routeConfigs {
 		// Build the middleware stack
