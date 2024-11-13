@@ -22,8 +22,6 @@ import (
 )
 
 func main() {
-	//    r := gin.Default()
-
 	ctx := context.Background()
 	cfg, err := config.LoadAPIConfig()
 	if err != nil {
@@ -55,7 +53,7 @@ func main() {
 
 	// Initialize Redis broker with options
 	redisOptions := broker.RedisOptions{
-		Addrs:     []string{"codensmoke-support-redis-single-1:6379"}, // Single node address
+		Addrs:     cfg.Redis.Address,
 		Prefix:    cfg.Redis.Prefix,
 		IsCluster: cfg.Redis.IsCluster, // Set to true if you want to use a Redis cluster
 	}

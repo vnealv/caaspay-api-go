@@ -31,7 +31,7 @@ rate_limit:
 
 # Redis configuration
 redis:
-  is_cluster: false             # Use Redis Cluster (default: false)
+  is_cluster: true             # Use Redis Cluster (default: false)
   prefix: "myriad"              # Prefix for Redis keys (default: "myriad")
   address:                      # Redis server addresses (single instance or cluster nodes)
     - "codensmoke-support-redis-main-0-1:6379"
