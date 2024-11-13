@@ -141,7 +141,7 @@ func addMiddlewareStack(r *gin.Engine, cfg *config.Config, logger *logging.Logge
 
 	// Apply Cloudflare headers middleware if enabled
 	if cfg.EnableCloudflare {
-		r.Use(middleware.CloudflareMiddleware(logger))
+		r.Use(middleware.CloudflareMiddleware(logger, cfg))
 	}
 
 	// Apply RBAC middleware if enabled

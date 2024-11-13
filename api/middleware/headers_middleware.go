@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"caaspay-api-go/api/config"
 	"caaspay-api-go/internal/logging"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -63,10 +64,10 @@ var cloudflareHeaders = []string{
 }
 
 // CloudflareMiddleware adds Cloudflare headers to logs and OpenTelemetry trace.
-func CloudflareMiddleware(logger *logging.Logger) gin.HandlerFunc {
+func CloudflareMiddleware(logger *logging.Logger, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Set up OpenTelemetry span
-		tracer := otel.Tracer("caaspay-api")
+		tracer := otel.Tracer(cfg.AppName)
 		ctx, span := tracer.Start(c.Request.Context(), "HTTP Request")
 		defer span.End()
 

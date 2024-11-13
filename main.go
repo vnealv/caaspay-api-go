@@ -35,22 +35,23 @@ func main() {
 		log.Fatalf("Failed to load route configurations: %v", err)
 	}
 	// Initialize Datadog metrics and OpenTelemetry tracer
-	metricsClient, err := metrics.NewDataDogMetrics(cfg.DatadogAddr, "caaspay-service", cfg.Env)
+	metricsClient, err := metrics.NewDataDogMetrics(cfg.DatadogAddr, cfg.AppName, cfg.Env)
 	if err != nil {
 		log.Fatalf("Failed to initialize Datadog metrics and tracer: %v", err)
 	}
 	defer metricsClient.Close()
 
-	//logger := logging.NewLogger("caaspay-service", "development", appConfig.MetricsEnabled, metricsClient)
-	logger := logging.NewLogger("caaspay-service", cfg.Env, "debug", false, metricsClient, ctx)
+	logger := logging.NewLogger(cfg.AppName, cfg.Env, cfg.LogLevel, false, metricsClient, ctx)
 
 	// Set up Gin with logger middleware
-	// gin.SetMode(gin.ReleaseMode)
+	if cfg.Env == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {
 		logger.Middleware()(c)
 	})
-	r.Use(otelgin.Middleware("caaspay-api-go"))
+	r.Use(otelgin.Middleware(cfg.AppName))
 
 	// Initialize Redis broker with options
 	redisOptions := broker.RedisOptions{

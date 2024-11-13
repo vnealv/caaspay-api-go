@@ -1,6 +1,7 @@
 # config/api.yaml
 
 # General configuration
+app_name: "caaspay-api"
 metrics_enabled: true
 datadog_addr: "codensmoke-support-datadog-agent-1"  # Address for Datadog metrics
 log_level: info                 # Log level (e.g., debug, info, warn, error)

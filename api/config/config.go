@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	AppName               string          `mapstructure:"app_name"`
 	MetricsEnabled        bool            `mapstructure:"metrics_enabled"`
 	DatadogAddr           string          `mapstructure:"datadog_addr"`
 	LogLevel              string          `mapstructure:"log_level"`
