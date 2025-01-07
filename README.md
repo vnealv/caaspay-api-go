@@ -50,4 +50,4 @@ go test ./...
 ```
 
 ## Contributing
-Contributions are welcome! Please follow the [contribution guidelines](CONTRIBUTING.md) when submitting a pull request.
+Contributions are welcome!
