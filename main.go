@@ -31,12 +31,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load route configurations: %v", err)
 	}
-	// Initialize Datadog metrics and OpenTelemetry tracer
-	metricsClient, err := metrics.NewDataDogMetrics(cfg.DatadogAddr, cfg.AppName, cfg.Env)
-	if err != nil {
-		log.Fatalf("Failed to initialize Datadog metrics and tracer: %v", err)
+	// Initialize Datadog metrics and OpenTelemetry tracer if enabled
+	var metricsClient *metrics.DataDogMetrics
+	if cfg.MetricsEnabled {
+		metricsClient, err = metrics.NewDataDogMetrics(cfg.DatadogAddr, cfg.AppName, cfg.Env)
+		if err != nil {
+			log.Fatalf("Failed to initialize Datadog metrics and tracer: %v", err)
+		}
+		defer metricsClient.Close()
 	}
-	defer metricsClient.Close()
 
 	logger := logging.NewLogger(cfg.AppName, cfg.Env, cfg.LogLevel, false, metricsClient, ctx)
 
@@ -57,14 +60,14 @@ func main() {
 		IsCluster: cfg.Redis.IsCluster, // Set to true if you want to use a Redis cluster
 	}
 	redisBroker := broker.NewRedisBroker(redisOptions)
+	defer redisBroker.Close()
 
 	// Initialize the RPC client pool using the Redis broker
 	rpcClientPool := rpc.NewRPCClientPool(ctx, cfg.RPCPool.InitialClients, cfg.RPCPool.MaxClients, cfg.RPCPool.MaxRequestsPerClient, redisBroker, cfg.RPCPool.MonitorInterval, cfg.RPCPool.ScaleDown, logger)
-	fmt.Fprintln(os.Stdout, "This is written directly to stdout")
+	defer rpcClientPool.Close()
 
 	// Initialize the routes with the route configuration
 	if err := routes.SetupRoutes(r, rpcClientPool, cfg, routeConfigs, logger); err != nil {
-		//log.Fatalf("Failed to set up routes: %v", err)
 		logger.LogWithStats("error", "Failed to set up routes", map[string]string{"metric_name": "setup_routes_error", "error": fmt.Sprintf("err %v", err)}, nil)
 	}
 
